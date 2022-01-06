@@ -43,7 +43,8 @@ def define_values(**kwargs):
         "float32": pyaudio.paFloat32
     }
     #print(kwargs.items())
-    kwargs["format"] = format[kwargs["format"]]
+    if "format" in kwargs.keys():
+        kwargs["format"] = format[kwargs["format"]]
     global values
     values = {key: kwargs.get(key, values[key]) for key in values}
     #values = kwargs
@@ -58,7 +59,7 @@ async def advanced_example():
      
 
         # Connect to the MQTT broker
-        client = Client('192.168.1.185', username = 'gobreza', password = 'Django4064')
+        client = Client('192.168.1.185', username = 'gobreza', password = 'Django4064', client_id=host_name)
         await stack.enter_async_context(client)
 
         # You can create any number of topic filters
@@ -118,11 +119,12 @@ async def send(client):
                 #print(sys.getsizeof(stream.read(CHUNK)))
                 #print(len(stream.read(values["chunk"])))
                 try:
-                    await client.publish("raspberry/data", stream.read(values["chunk"]))
+                    await client.publish("raspberry/data", stream.read(values["chunk"]), qos=0)
                 except OSError:
                     print("Input overflow, please choose bigger buffer")
+                    await client.publish("raspberry/data", "Input overflow")
                     await asyncio.sleep(0.5)
-                    define_values(**{"stream":"off", "rate":192000, "channels":2, "format":"int16", "chunk":10000})
+                    define_values(**{"stream":"off"})
                     stream.__init__(audio, rate=values["rate"], channels=int(values["channels"]), format=values["format"], input=True, input_device_index=1, frames_per_buffer=values["chunk"])
 
             elif values["stream"] == "off":
@@ -135,7 +137,7 @@ async def send(client):
                     print("stream not active")
                 message = {"host name": host_name, "MAC":mac,"status":"connected", "stream":"not active"}
                 await client.publish("raspberry/status", payload=json.dumps(message))
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1)
 
         elif values["mode"] == "duration" and values["stream"] == "on":
 
@@ -149,17 +151,18 @@ async def send(client):
             try:
                 for _ in range(0, int(values["rate"]/values["chunk"] * values["duration"])):
                     await client.publish("raspberry/data", stream.read(values["chunk"]))
-                define_values(**{"mode":"stream", "stream":"off", "rate":192000, "channels":2, "format":"int16", "chunk":10000})
+                await client.publish("raspberry/status", "finished")
+                print(f'The time {values["duration"]}s is up')
+                define_values(**{"mode":"stream", "stream":"off"})
                 stream.stop_stream()
                 stream.close()
 
             except OSError:
                 print("Input overflow, please choose bigger buffer")
+                await client.publish("raspberry/status", "Input overflow")
                 await asyncio.sleep(0.5)
-                define_values(**{"stream":"off"})
+                define_values(**{"mode":"stream", "stream":"off"})
                 stream.__init__(audio, rate=values["rate"], channels=int(values["channels"]), format=values["format"], input=True, input_device_index=1, frames_per_buffer=values["chunk"])
-
-
 
 
 
