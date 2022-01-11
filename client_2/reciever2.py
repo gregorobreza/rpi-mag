@@ -3,6 +3,8 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from random import randrange
 from asyncio_mqtt import Client, MqttError, client
 import numpy as np
+import json
+from pickle import dumps, loads
 
 
 
@@ -57,15 +59,20 @@ async def log_messages(messages, client):
             text = message.payload.decode()
             print(text)
         elif message.topic == "raspberry/data":
-
             numpydata = np.frombuffer(message.payload, dtype=np.int16)
+            if CONTROL["channels"] == 2:
+                frame = np.stack((numpydata[::2], numpydata[1::2]), axis=0)
+                print(frame)
             #test_array = np.append(test_array, numpydata)
-            count += len(numpydata)
+            #count += len(numpydata)
             print(numpydata)
-            print(count)
-            await client.publish("raspberry/calculation", numpydata.tobytes())
+            list = frame.tolist()
+            json_str = json.dumps(list)
+            #buffer_matrix = dumps(frame)
+            #print(buffer_matrix)
+            await client.publish("raspberry/calculation", json_str)
         elif message.topic == "raspberry/control":
-            CONTROL = message.payload.decode()
+            CONTROL = json.loads(message.payload.decode())
             print(CONTROL)
         # 🤔 Note that we assume that the message paylod is an
         # UTF8-encoded string (hence the `bytes.decode` call).

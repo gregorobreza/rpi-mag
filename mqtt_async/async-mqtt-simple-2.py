@@ -10,6 +10,9 @@ import pyaudio
 from getmac import get_mac_address
 import socket
 
+import numpy as np
+import json
+
 
 audio = pyaudio.PyAudio()
 
@@ -24,7 +27,7 @@ values = {'mode': "stream",
             'rate': 192000, 
             'channels': 2, 
             'format': pyaudio.paInt16, 
-            'chunk': 3600}
+            'chunk': 360000}
 
 
 
@@ -59,19 +62,22 @@ async def advanced_example():
      
 
         # Connect to the MQTT broker
-        client = Client('192.168.1.185', username = 'gobreza', password = 'Django4064', client_id=host_name)
+        #client = Client('192.168.1.185', username = 'gobreza', password = 'Django4064', client_id=host_name)
+        client = Client('192.168.0.108', username = 'gobreza', password = 'Django4064', client_id=host_name)
         await stack.enter_async_context(client)
 
         # You can create any number of topic filters
         topic_filters = (
             "raspberry/control",
+            "raspberry/status",
+            "raspberry/check"
         )
 
         for topic_filter in topic_filters:
             
             manager = client.filtered_messages(topic_filter)
             messages = await stack.enter_async_context(manager)
-            task = asyncio.create_task(receive(messages))
+            task = asyncio.create_task(receive(messages, client))
             tasks.add(task)
 
 
@@ -90,14 +96,19 @@ async def advanced_example():
         await asyncio.gather(*tasks)
 
 
-async def receive(messages):
+async def receive(messages, client):
     async for message in messages:
+        print(message.payload.decode())
+        if message.topic == "raspberry/check" and message.payload.decode() == "status":
+            message = {"host name": host_name, "MAC":mac,"status":"connected"}
+            await client.publish("raspberry/status", payload=json.dumps(message))
         #print(message.topic)
-        print(json.loads(message.payload))
-        message = json.loads(message.payload)
-        #global values
-        #values = message
-        define_values(**message)
+        elif message.topic == "raspberry/control":
+            print(json.loads(message.payload))
+            message = json.loads(message.payload)
+            #global values
+            #values = message
+            define_values(**message)
 
 
 async def send(client):
@@ -119,6 +130,10 @@ async def send(client):
                 #print(sys.getsizeof(stream.read(CHUNK)))
                 #print(len(stream.read(values["chunk"])))
                 try:
+                    # numpydata = np.frombuffer(stream.read(values["chunk"]), dtype=np.int16)
+                    # list = numpydata.tolist()
+                    # json_str = json.dumps(list)
+                    # await client.publish("raspberry/data", json_str, qos=0)
                     await client.publish("raspberry/data", stream.read(values["chunk"]), qos=0)
                 except OSError:
                     print("Input overflow, please choose bigger buffer")
@@ -134,10 +149,11 @@ async def send(client):
                         stream.stop_stream()
                         stream.close()
                 except OSError:
-                    print("stream not active")
-                message = {"host name": host_name, "MAC":mac,"status":"connected", "stream":"not active"}
-                await client.publish("raspberry/status", payload=json.dumps(message))
-                await asyncio.sleep(1)
+                    pass
+                    #print("stream not active")
+                # message = {"host name": host_name, "MAC":mac,"status":"connected", "stream":"not active"}
+                # await client.publish("raspberry/status", payload=json.dumps(message))
+                await asyncio.sleep(0.1)
 
         elif values["mode"] == "duration" and values["stream"] == "on":
 
