@@ -15,7 +15,7 @@ import json
 
 
 audio = pyaudio.PyAudio()
-
+card = audio.get_device_info_by_index(1)['name'].split(":")[0]
 mac = get_mac_address()
 host_name = socket.gethostname()
 
@@ -98,9 +98,9 @@ async def advanced_example():
 
 async def receive(messages, client):
     async for message in messages:
-        print(message.payload.decode())
+        #print(message.payload.decode())
         if message.topic == "raspberry/check" and message.payload.decode() == "status":
-            message = {"host name": host_name, "MAC":mac,"status":"connected"}
+            message = {"host name": host_name, "MAC":mac,"status":"connected", "card":card}
             await client.publish("raspberry/status", payload=json.dumps(message))
         #print(message.topic)
         elif message.topic == "raspberry/control":
@@ -125,7 +125,8 @@ async def send(client):
                 try:
                     stream.start_stream()
                 except OSError:
-                    stream.__init__(audio, rate=values["rate"], channels=values["channels"], format=values["format"], input=True, input_device_index=1, frames_per_buffer=values["chunk"])
+                    stream.__init__(audio, rate=values["rate"], channels=values["channels"], format=values["format"], 
+                    input=True, input_device_index=1, frames_per_buffer=values["chunk"])
                     #print(values)
                 #print(sys.getsizeof(stream.read(CHUNK)))
                 #print(len(stream.read(values["chunk"])))
@@ -134,7 +135,7 @@ async def send(client):
                     # list = numpydata.tolist()
                     # json_str = json.dumps(list)
                     # await client.publish("raspberry/data", json_str, qos=0)
-                    await client.publish("raspberry/data", stream.read(values["chunk"]), qos=0)
+                    await client.publish("raspberry/data", stream.read(values["chunk"], exception_on_overflow=False), qos=0)
                 except OSError:
                     print("Input overflow, please choose bigger buffer")
                     await client.publish("raspberry/data", "Input overflow")
@@ -166,7 +167,7 @@ async def send(client):
                 #print(len(stream.read(values["chunk"])))
             try:
                 for _ in range(0, int(values["rate"]/values["chunk"] * values["duration"])):
-                    await client.publish("raspberry/data", stream.read(values["chunk"]))
+                    await client.publish("raspberry/data", stream.read(values["chunk"], exception_on_overflow=False))
                 await client.publish("raspberry/status", "finished")
                 print(f'The time {values["duration"]}s is up')
                 define_values(**{"mode":"stream", "stream":"off"})

@@ -21,7 +21,8 @@ async def advanced_example():
         stack.push_async_callback(cancel_tasks, tasks)
 
         # Connect to the MQTT broker
-        client = Clientclient = Client('192.168.1.185', username = 'gobreza', password = 'Django4064', client_id="raspberrypi-calculation")
+        #client = Clientclient = Client('192.168.1.185', username = 'gobreza', password = 'Django4064', client_id="raspberrypi-calculation"
+        client = Client('192.168.0.108', username = 'gobreza', password = 'Django4064', client_id="calculation")
         await stack.enter_async_context(client)
 
         # You can create any number of topic filters
@@ -59,18 +60,18 @@ async def log_messages(messages, client):
             text = message.payload.decode()
             print(text)
         elif message.topic == "raspberry/data":
+            print(type(message.payload))
             numpydata = np.frombuffer(message.payload, dtype=np.int16)
             if CONTROL["channels"] == 2:
                 frame = np.stack((numpydata[::2], numpydata[1::2]), axis=0)
                 print(frame)
-            #test_array = np.append(test_array, numpydata)
+            test_array = np.append(test_array, numpydata)
             #count += len(numpydata)
-            print(numpydata)
-            list = frame.tolist()
-            json_str = json.dumps(list)
+            print(len(numpydata))
+            #list = frame.tolist()
+            #json_str = json.dumps(list)
             #buffer_matrix = dumps(frame)
-            #print(buffer_matrix)
-            await client.publish("raspberry/calculation", json_str)
+            #await client.publish("raspberry/calculation", json_str)
         elif message.topic == "raspberry/control":
             CONTROL = json.loads(message.payload.decode())
             print(CONTROL)
