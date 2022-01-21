@@ -21,8 +21,8 @@ async def advanced_example():
         stack.push_async_callback(cancel_tasks, tasks)
 
         # Connect to the MQTT broker
-        #client = Clientclient = Client('192.168.1.185', username = 'gobreza', password = 'Django4064', client_id="raspberrypi-calculation"
-        client = Client('192.168.0.108', username = 'gobreza', password = 'Django4064', client_id="calculation")
+        client = Clientclient = Client('192.168.1.233', username = 'gobreza', password = 'Django4064', client_id="raspberrypi-calculation"
+        #client = Client('192.168.0.108', username = 'gobreza', password = 'Django4064', client_id="calculation")
         await stack.enter_async_context(client)
 
         # You can create any number of topic filters

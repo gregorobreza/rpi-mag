@@ -17,7 +17,8 @@ def post_file(path, file):
     file_path = path + "/" + file
     with open(file_path, "rb") as a_file:
         file_dict = {file: a_file}
-        response = requests.post("http://192.168.0.108:8001/measurement/upload/" + file +"/", files=file_dict)
+        #response = requests.post("http://192.168.0.108:8001/measurement/upload/" + file +"/", files=file_dict)
+        response = requests.post("http://192.168.1.233:8001/measurement/upload/" + file +"/", files=file_dict)
 
 
 # The callback for when the client receives a CONNACK response from the server.
@@ -46,7 +47,8 @@ client.on_connect = on_connect
 client.on_message = on_message
 
 client.username_pw_set(username = 'gobreza', password = 'Django4064')
-client.connect('192.168.0.108', 1883, 20)
+# client.connect('192.168.0.108', 1883, 20)
+client.connect('192.168.1.233', 1883, 20)
 
 # Blocking call that processes network traffic, dispatches callbacks and
 # handles reconnecting.

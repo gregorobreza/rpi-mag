@@ -11,10 +11,10 @@ async def bridge():
     
     while True:
         try:    
-                #async with Client('192.168.1.185', username = 'gobreza', password = 'Django4064') as client:
-                async with Client('192.168.0.108', username = 'gobreza', password = 'Django4064') as client:
-                    #async with websockets.connect('ws://192.168.1.185:8000/ws/some_urls/', ping_interval=None) as websocket:
-                    async with websockets.connect('ws://192.168.0.108:8001/ws/raspberry/data/', ping_interval=None) as websocket:
+                async with Client('192.168.1.233', username = 'gobreza', password = 'Django4064') as client:
+                #async with Client('192.168.0.108', username = 'gobreza', password = 'Django4064') as client:
+                    async with websockets.connect('ws://192.168.1.233:8001/ws/raspberry/data/', ping_interval=None) as websocket:
+                    #async with websockets.connect('ws://192.168.0.108:8001/ws/raspberry/data/', ping_interval=None) as websocket:
 
                         async with client.filtered_messages("raspberry/data") as messages:
                                 # subscribe is done afterwards so that we just start receiving messages 
