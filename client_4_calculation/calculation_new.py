@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import json
 from scipy.signal import csd
-from matplotlib.pyplot import plt
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger("IDS_LOGGER.refining")
 logging.basicConfig(level=logging.INFO)
@@ -16,8 +16,8 @@ class calculation:
         self.last_state = {}
         self.last_data = np.array([])
         try:
-            self.BROKER_IP = '192.168.1.233'
-
+            #self.BROKER_IP = '192.168.1.233'
+            self.BROKER_IP = '192.168.0.108'
             self.client_id = "calculate"
             self.client = mqtt.Client(client_id = self.client_id)
             self.client.on_connect = self.on_connect
@@ -68,22 +68,24 @@ class calculation:
 
     def get_frf(self, i, o, window="hann"):
         fs = self.last_state["rate"]
-        freq, IO = csd(i, o, fs=fs, scaling="spectrum", window=window)
-        freq, OI = csd(o, i, fs=fs, scaling="spectrum", window=window)
-        freq, II = csd(i, i, fs=fs, scaling="spectrum", window=window)
-        freq, OO = csd(o, o, fs=fs, scaling="spectrum", window=window)
+        freq, IO = csd(i, o, fs=fs, scaling="spectrum", nperseg=1024, window=window)
+        freq, OI = csd(o, i, fs=fs, scaling="spectrum", nperseg=1024, window=window)
+        freq, II = csd(i, i, fs=fs, scaling="spectrum", nperseg=1024, window=window)
+        freq, OO = csd(o, o, fs=fs, scaling="spectrum", nperseg=1024, window=window)
 
         H1 = IO/II
         H2 = OO/OI
         coh = H1/H2
         # print(H1)
         # print(H2)
-        print(coh)
-        plt.semylog(freq, np.abs(H1))
+        print(freq)
+        np.savez("test.npz", **{"freq":freq, "H1":H1, "H2":H2, "coh":coh})
+
 
     def clean_data(self):
         self.last_data = np.array([])
         #print(len(self.last_data))
+
 
 
 test = calculation()
