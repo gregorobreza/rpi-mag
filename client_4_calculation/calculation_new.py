@@ -79,7 +79,7 @@ class calculation:
         # print(H1)
         # print(H2)
         print(freq)
-        np.savez("test.npz", **{"freq":freq, "H1":H1, "H2":H2, "coh":coh})
+        np.savez("test.npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh})
 
 
     def clean_data(self):
