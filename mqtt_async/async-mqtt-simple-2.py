@@ -62,8 +62,8 @@ async def advanced_example():
      
 
         # Connect to the MQTT broker
-        #client = Client('192.168.1.233', username = 'gobreza', password = 'Django4064', client_id=host_name)
-        client = Client('192.168.0.108', username = 'gobreza', password = 'Django4064', client_id=host_name)
+        client = Client('192.168.1.233', username = 'gobreza', password = 'Django4064', client_id=host_name)
+        # client = Client('192.168.0.108', username = 'gobreza', password = 'Django4064', client_id=host_name)
         await stack.enter_async_context(client)
 
         # You can create any number of topic filters

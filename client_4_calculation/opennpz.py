@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.load("test.npz")
+data = np.load("../measurements/bla.npz")
 
 input = data["input"]
 output = data["output"]
@@ -34,3 +34,6 @@ ax3.set_ylabel('Koherenca')
 ax1.set_ylabel('Amplituda [dB]')
 
 plt.savefig("dummy_name.png")
+
+# plt.plot(input[1500:3000])
+# plt.savefig("neki")
