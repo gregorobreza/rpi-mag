@@ -5,6 +5,9 @@ import numpy as np
 import json
 from scipy.signal import csd
 import matplotlib.pyplot as plt
+import os
+import errno
+import shutil
 
 logger = logging.getLogger("IDS_LOGGER.refining")
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +19,7 @@ class calculation:
         self.last_state = {}
         self.last_data = np.array([])
         self.files_path = "../measurements/"
+        self.dir_name = "default"
         try:
             self.BROKER_IP = '192.168.1.233'
             #self.BROKER_IP = '192.168.0.108'
@@ -73,6 +77,8 @@ class calculation:
 
     def get_frf(self, i, o, window="hann"):
         fs = self.last_state["rate"]
+        duration = len(i) / fs
+        print(duration)
         freq, IO = csd(i, o, fs=fs, scaling="spectrum", nperseg=1024, window=window)
         freq, OI = csd(o, i, fs=fs, scaling="spectrum", nperseg=1024, window=window)
         freq, II = csd(i, i, fs=fs, scaling="spectrum", nperseg=1024, window=window)
@@ -83,19 +89,34 @@ class calculation:
         coh = H1/H2
         # print(H1)
         # print(H2)
-        print(freq)
-        np.savez(self.files_path + self.last_state["name"] + ".npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh})
+        #print(freq)
+        
+        info = self.last_state
+        info["duration"] = duration
+        self.dir_name = os.path.join(self.files_path, self.last_state["name"])
+        if os.path.exists(self.dir_name):
+            shutil.rmtree(self.dir_name)
+
+        try:
+            os.mkdir(self.dir_name)
+        except IOError as e:
+            if e.errno == 17:
+                print("mapa obstaja")
+
+
+        np.savez(self.dir_name +"/" + self.last_state["name"] + ".npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh})
         np.savez("neki.npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh})
-        self.create_dict(freq, H1, H2, coh)
+        self.create_dict(freq, H1, H2, coh, info)
 
 
     def clean_data(self):
         self.last_data = np.array([])
         #print(len(self.last_data))
 
-    def create_dict(self, freq, H1, H2, coh):
+    def create_dict(self, freq, H1, H2, coh, info):
         """creates dictionary and json for view in JS"""
-        dicts = {"H1":{}, "H2":{}, "angle":{}, "coh":{}}
+
+        dicts = {"info": info, "H1":{}, "H2":{}, "angle":{}, "coh":{}}
         freq = freq.tolist()
         H1 = 20*np.log10(np.abs(H1)).tolist()
         H2 = 20*np.log10(np.abs(H2)).tolist()
@@ -108,9 +129,9 @@ class calculation:
             dicts["angle"][j] = angle[i]
             dicts["coh"][j] = coh[i]
 
-        with open('json_data.json', 'w') as outfile:
+        with open(self.dir_name + "/" + self.last_state["name"] + ".json", 'w') as outfile:
             json.dump(dicts, outfile)
 
 
-
-test = calculation()
+if __name__ == "__main__":
+    test = calculation()
