@@ -30,8 +30,9 @@ class list_measurements:
         self.files_path = "../measurements/"
         self.dir_name = "default"
         try:
-            self.BROKER_IP = '192.168.1.233'
-            #self.BROKER_IP = '192.168.0.108'
+            #self.BROKER_IP = '192.168.1.233'
+            #self.BROKER_IP = '192.168.1.117'
+            self.BROKER_IP = '192.168.0.108'
             self.client_id = "list_measurements"
             self.client = mqtt.Client(client_id = self.client_id)
             self.client.on_connect = self.on_connect
@@ -78,7 +79,7 @@ class list_measurements:
         npz_file = os.path.join(self.files_path, folder) +"/" + folder + ".npz"
         print(npz_file)
         files = {'file1': open(json_file, 'rb'), 'file2': open(npz_file, 'rb')}
-        response = requests.post("http://192.168.1.233:8001/measurement/upload/" + folder +"/", files=files)
+        response = requests.post("http://" + self.BROKER_IP +":8001/measurement/upload/" + folder +"/", files=files)
 
 
     

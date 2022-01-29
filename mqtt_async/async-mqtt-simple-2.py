@@ -20,6 +20,9 @@ mac = get_mac_address()
 host_name = socket.gethostname()
 
 
+
+IP = '192.168.0.108' # '192.168.1.117' '192.168.1.233'
+
 #default values
 values = {'mode': "stream",
             'stream':'off',
@@ -27,7 +30,7 @@ values = {'mode': "stream",
             'rate': 192000, 
             'channels': 2, 
             'format': pyaudio.paInt16, 
-            'chunk': 360000}
+            'chunk': 8000}
 
 
 
@@ -55,15 +58,14 @@ def define_values(**kwargs):
 async def advanced_example():
 
     async with AsyncExitStack() as stack:
-        # Keep track of the asyncio tasks that we create, so that
-        # we can cancel them on exit
+
         tasks = set()
         stack.push_async_callback(cancel_tasks, tasks)
      
 
         # Connect to the MQTT broker
-        client = Client('192.168.1.233', username = 'gobreza', password = 'Django4064', client_id=host_name)
-        # client = Client('192.168.0.108', username = 'gobreza', password = 'Django4064', client_id=host_name)
+        client = Client(IP, username = 'gobreza', password = 'Django4064', client_id=host_name)
+
         await stack.enter_async_context(client)
 
         # You can create any number of topic filters
@@ -81,9 +83,6 @@ async def advanced_example():
             tasks.add(task)
 
 
-        # Subscribe to topic(s)
-        # 🤔 Note that we subscribe *after* starting the message
-        # loggers. Otherwise, we may miss retained messages.
         await client.subscribe("raspberry/#")
 
 
@@ -131,10 +130,7 @@ async def send(client):
                 #print(sys.getsizeof(stream.read(CHUNK)))
                 #print(len(stream.read(values["chunk"])))
                 try:
-                    # numpydata = np.frombuffer(stream.read(values["chunk"]), dtype=np.int16)
-                    # list = numpydata.tolist()
-                    # json_str = json.dumps(list)
-                    # await client.publish("raspberry/data", json_str, qos=0)
+ 
                     await client.publish("raspberry/data", stream.read(values["chunk"], exception_on_overflow=False), qos=0)
                 except OSError:
                     print("Input overflow, please choose bigger buffer")

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.load("../measurements/bla.npz")
+data = np.load("neki.npz")
 
 input = data["input"]
 output = data["output"]
@@ -11,17 +11,18 @@ H2 = data["H2"]
 coh = data["coh"]
 
 f_min = 0
-f_max = 20000
+f_max = 6000
 
 sel = (freq>f_min) & (freq<f_max)
 
 # plt.semilogy(freq[sel], np.abs(H1[sel]))
 # plt.semilogy(freq[sel], np.abs(H2[sel]))
-#plt.plot(freq[sel], np.angle(H1[sel]))
+# plt.plot(freq[sel], np.angle(H1[sel]))
 # plt.plot(freq[sel], np.abs(coh[sel]))
 # plt.savefig("dummy_name.png")
 
-
+print(len(freq))
+print(len(H1))
 
 fig, [ax1, ax2, ax3]  = plt.subplots(3,1, sharex=True)
 ax1.plot(freq[sel], 20*np.log10(np.abs(H1[sel])))
@@ -35,5 +36,5 @@ ax1.set_ylabel('Amplituda [dB]')
 
 plt.savefig("dummy_name.png")
 
-# plt.plot(input[1500:3000])
-# plt.savefig("neki")
+# plt.plot(output)
+# plt.savefig("bla.png")
