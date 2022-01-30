@@ -9,6 +9,9 @@ freq = data["freq"]
 H1 = data["H1"]
 H2 = data["H2"]
 coh = data["coh"]
+info = data["info"]
+
+print(info)
 
 f_min = 0
 f_max = 6000

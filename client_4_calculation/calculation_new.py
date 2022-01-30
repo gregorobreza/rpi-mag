@@ -4,10 +4,10 @@ import logging
 import numpy as np
 import json
 from scipy.signal import csd
-import matplotlib.pyplot as plt
 import os
 import errno
 import shutil
+from datetime import datetime
 
 logger = logging.getLogger("IDS_LOGGER.refining")
 logging.basicConfig(level=logging.INFO)
@@ -92,13 +92,14 @@ class calculation:
         H1 = IO/II
         H2 = OO/OI
         coh = H1/H2
-        # print(H1)
-        # print(H2)
-        #print(freq)
-        
+
+        now = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+
         info = self.last_state
         info["duration"] = duration
+        info["date"] = now
         self.dir_name = os.path.join(self.files_path, self.last_state["name"])
+
         if os.path.exists(self.dir_name):
             shutil.rmtree(self.dir_name)
 
@@ -108,17 +109,18 @@ class calculation:
             if e.errno == 17:
                 print("mapa obstaja")
 
+        npinfo = np.array(list(info.items()))
 
-        np.savez(self.dir_name +"/" + self.last_state["name"] + ".npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh})
-        np.savez("neki.npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh})
-        self.create_dict(freq, H1, H2, coh, info)
+        np.savez(self.dir_name +"/" + self.last_state["name"] + ".npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh, "info":npinfo})
+        np.savez("neki.npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh, "info":npinfo})
+        self.create_dict(freq, H1, H2, coh, info, i, o)
 
 
     def clean_data(self):
         self.last_data = np.array([])
         #print(len(self.last_data))
 
-    def create_dict(self, freq, H1, H2, coh, info):
+    def create_dict(self, freq, H1, H2, coh, info, i, o):
         """creates dictionary and json for view in JS"""
 
         #dicts = {"info": info, "H1":{}, "H2":{}, "angle":{}, "coh":{}}
@@ -128,8 +130,10 @@ class calculation:
         H2 = (20*np.log10(np.abs(H2))).tolist()
         angle = np.angle(H1).tolist()
         coh = np.abs(coh).tolist()
+        i = i.tolist()
+        o = o.tolist()
 
-        dicts = {"info": info, "freq":freq, "H1":H1, "H2":H2, "angle":angle, "coh":coh}
+        dicts = {"info": info, "freq":freq, "H1":H1, "H2":H2, "angle":angle, "coh":coh, "input":i, "output":o}
 
         # for i,j in enumerate(freq):
         #     dicts["H1"][j] = H1[i]
