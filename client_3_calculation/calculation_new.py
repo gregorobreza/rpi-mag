@@ -50,8 +50,12 @@ class calculation:
             # self.clean_data()
             # print(len(self.last_data))
         elif msg.topic == "raspberry/data":
-            if self.last_state["save"] == "yes":
+            if self.last_state["save"] == "yes" and (self.last_state["mode"] == ("stream" or "duration")):
+                print("tuki regular")
                 self.last_data = np.append(self.last_data, msg.payload)
+            elif self.last_state["save"] == "yes" and self.last_state["mode"] == "save-triger":
+                print("tuki triger")
+                self.check_value(msg.payload)
             if self.last_state["stream"] == "off":
                 self.transform_data(self.last_data)
                 # self.clean_data()
@@ -65,11 +69,12 @@ class calculation:
 
     def transform_data(self, data):
         if data.size != 0:
-            data = np.frombuffer(data, dtype=np.int16)
+            if data.dtype != "int16":
+                data = np.frombuffer(data, dtype=np.int16)
             frame = np.stack((data[::2], data[1::2]), axis=0)
             #skaliranje iz int16
             input = (frame[1] * 2.1 * np.sqrt(2)) /((2**15)*0.1)
-            output = (frame[0] * 2.1 * np.sqrt(2)) /((2**15)*0.47)
+            output = (frame[0] * 2.1 * np.sqrt(2)) * 9.81/((2**15)*0.47)
             self.get_frf(input, output)
             print(len(frame[1]))
             self.clean_data()
@@ -80,7 +85,6 @@ class calculation:
     def get_frf(self, i, o, window="hann"):
         fs = self.last_state["rate"]
         duration = len(i) / fs
-        print(duration)
         segments = self.last_state["segments"]
         # segments = 10
         
@@ -126,14 +130,18 @@ class calculation:
         #dicts = {"info": info, "H1":{}, "H2":{}, "angle":{}, "coh":{}}
 
         freq = freq.tolist()
-        H1 = (20*np.log10(np.abs(H1))).tolist()
-        H2 = (20*np.log10(np.abs(H2))).tolist()
         angle = (np.angle(H1, deg=1)).tolist()
+        H1a = (20*np.log10(np.abs(H1))).tolist()
+        H2a = (20*np.log10(np.abs(H2))).tolist()
+        
         coh = np.abs(coh).tolist()
-        i = i.tolist()
-        o = o.tolist()
 
-        dicts = {"info": info, "freq":freq, "H1":H1, "H2":H2, "angle":angle, "coh":coh, "input":i, "output":o}
+        if self.last_state["zajem"] == "yes":
+            i = i.tolist()
+            o = o.tolist()
+            dicts = {"info": info, "freq":freq, "H1":H1a, "H2":H2a, "angle":angle, "coh":coh, "input":i, "output":o}
+        else:
+            dicts = {"info": info, "freq":freq, "H1":H1a, "H2":H2a, "angle":angle, "coh":coh}
 
         # for i,j in enumerate(freq):
         #     dicts["H1"][j] = H1[i]
@@ -144,6 +152,23 @@ class calculation:
         with open(self.dir_name + "/" + self.last_state["name"] + ".json", 'w') as outfile:
             json.dump(dicts, outfile)
         print("done")
+        self.list_files()
+
+    def list_files(self):
+        folders = next(os.walk(self.files_path))[1]
+        msg = json.dumps(folders)
+        self.client.publish("raspberry/measurements", payload=msg, qos=0, retain=False)
+
+    def check_value(self, buffer):
+        data = np.frombuffer(buffer, dtype=np.int16)
+        frame = np.stack((data[::2], data[1::2]), axis=0)
+        if np.max(frame[0]) > 150 or np.min(frame[0]) < -150:
+            self.last_data = np.append(self.last_data, buffer)
+        elif self.last_data.size > 0 and (np.max(frame[0]) < 150 or np.min(frame[0]) > - 150):
+            msg = {"stream":"off", "save":"no"}
+            msg = json.dumps(msg)
+            self.client.publish("raspberry/control", payload=msg, qos=0, retain=False)
+            self.transform_data(self.last_data)
 
 
 if __name__ == "__main__":

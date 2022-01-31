@@ -118,7 +118,7 @@ async def send(client):
                         frames_per_buffer=values["chunk"])
     
     while True :
-        if values["mode"] == "stream":
+        if values["mode"] == "stream" or "save-triger":
             if values["stream"] == "on":
                 
                 try:
