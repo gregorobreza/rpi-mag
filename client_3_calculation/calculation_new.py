@@ -1,5 +1,4 @@
 import paho.mqtt.client as mqtt
-import time
 import logging
 import numpy as np
 import json
@@ -14,8 +13,8 @@ logging.basicConfig(level=logging.INFO)
 
 class calculation:
 
-
     def __init__(self):
+        """Definicija konstruktorja"""
         self.last_state = {}
         self.last_data = np.array([])
         self.files_path = "../measurements/"
@@ -38,39 +37,29 @@ class calculation:
 
 
     def on_message(self,client, userdata,msg):
-        """MQTT Callback function for handling received messages"""
-        #print("message received!")
-        #print(msg.payload.decode())
+        """MQTT Callback funkcija za prejeta sporocila"""
         if msg.topic == "raspberry/control":
             message = msg.payload.decode()
             self.last_state = json.loads(message)
-            # print(self.last_state)
         elif msg.topic == "raspberry/status" and msg.payload.decode() == "finished":
             self.transform_data(self.last_data)
-            # self.clean_data()
-            # print(len(self.last_data))
         elif msg.topic == "raspberry/data":
             if self.last_state["save"] == "yes" and (self.last_state["mode"] == ("stream" or "duration")):
-                print("tuki regular")
                 self.last_data = np.append(self.last_data, msg.payload)
-            elif self.last_state["save"] == "yes" and self.last_state["mode"] == "save-triger":
-                print("tuki triger")
-                self.check_value(msg.payload)
             if self.last_state["stream"] == "off":
                 self.transform_data(self.last_data)
-                # self.clean_data()
-                # print(len(self.last_data))
   
     def on_connect(self,client,userdata, flags, rc):
-        print("connected")
-        # self.client.subscribe("raspberry/data")
+        """MQTT Callback funkcija za vspostavljeno povezavo"""
+        print("povezan")
         for topic in self.topics:
             self.client.subscribe(topic)
 
     def transform_data(self, data):
+        """Pretvorba, skaliranje in 
+        delitev kanalov"""
         if data.size != 0:
-            if data.dtype != "int16":
-                data = np.frombuffer(data, dtype=np.int16)
+            data = np.frombuffer(data, dtype=np.int16)
             frame = np.stack((data[::2], data[1::2]), axis=0)
             #skaliranje iz int16
             input = (frame[1] * 2.1 * np.sqrt(2)) /((2**15)*0.1)
@@ -83,22 +72,21 @@ class calculation:
             
 
     def get_frf(self, i, o, window="hann"):
+        """Pridobitev FRF preko Welchove metode"""
         fs = self.last_state["rate"]
         duration = len(i) / fs
         segments = self.last_state["segments"]
-        # segments = 10
         
         freq, IO = csd(i, o, fs=fs, nperseg=int(fs)//segments, noverlap=int(fs)//(2*segments), scaling="spectrum",  window=window)
         freq, OI = csd(o, i, fs=fs, nperseg=int(fs)//segments, noverlap=int(fs)//(2*segments), scaling="spectrum",  window=window)
         freq, II = csd(i, i, fs=fs, nperseg=int(fs)//segments, noverlap=int(fs)//(2*segments), scaling="spectrum",  window=window)
         freq, OO = csd(o, o, fs=fs, nperseg=int(fs)//segments, noverlap=int(fs)//(2*segments), scaling="spectrum",  window=window)
-
         H1 = IO/II
         H2 = OO/OI
         coh = H1/H2
-
         now = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
 
+        # Oblikovanje in shranjevanje datotek
         info = self.last_state
         info["duration"] = duration
         info["date"] = now
@@ -116,26 +104,21 @@ class calculation:
         npinfo = np.array(list(info.items()))
 
         np.savez(self.dir_name +"/" + self.last_state["name"] + ".npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh, "info":npinfo})
-        np.savez("neki.npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh, "info":npinfo})
+        # np.savez("neki.npz", **{"input": i, "output": o, "freq":freq, "H1":H1, "H2":H2, "coh":coh, "info":npinfo})
         self.create_dict(freq, H1, H2, coh, info, i, o)
 
-
     def clean_data(self):
+        """Pocisti zadnje podatke"""
         self.last_data = np.array([])
-        #print(len(self.last_data))
 
     def create_dict(self, freq, H1, H2, coh, info, i, o):
-        """creates dictionary and json for view in JS"""
-
-        #dicts = {"info": info, "H1":{}, "H2":{}, "angle":{}, "coh":{}}
+        """Izdelava json datotek za prikaz v apliakciji"""
 
         freq = freq.tolist()
         angle = (np.angle(H1, deg=1)).tolist()
         H1a = (20*np.log10(np.abs(H1))).tolist()
         H2a = (20*np.log10(np.abs(H2))).tolist()
-        
         coh = np.abs(coh).tolist()
-
         if self.last_state["zajem"] == "yes":
             i = i.tolist()
             o = o.tolist()
@@ -143,33 +126,15 @@ class calculation:
         else:
             dicts = {"info": info, "freq":freq, "H1":H1a, "H2":H2a, "angle":angle, "coh":coh}
 
-        # for i,j in enumerate(freq):
-        #     dicts["H1"][j] = H1[i]
-        #     dicts["H2"][j] = H2[i]
-        #     dicts["angle"][j] = angle[i]
-        #     dicts["coh"][j] = coh[i]
-        #print(dicts)
         with open(self.dir_name + "/" + self.last_state["name"] + ".json", 'w') as outfile:
             json.dump(dicts, outfile)
-        print("done")
+        print("koncano")
         self.list_files()
 
     def list_files(self):
         folders = next(os.walk(self.files_path))[1]
         msg = json.dumps(folders)
         self.client.publish("raspberry/measurements", payload=msg, qos=0, retain=False)
-
-    def check_value(self, buffer):
-        data = np.frombuffer(buffer, dtype=np.int16)
-        frame = np.stack((data[::2], data[1::2]), axis=0)
-        if np.max(frame[0]) > 150 or np.min(frame[0]) < -150:
-            self.last_data = np.append(self.last_data, buffer)
-        elif self.last_data.size > 0 and (np.max(frame[0]) < 150 or np.min(frame[0]) > - 150):
-            msg = {"stream":"off", "save":"no"}
-            msg = json.dumps(msg)
-            self.client.publish("raspberry/control", payload=msg, qos=0, retain=False)
-            self.transform_data(self.last_data)
-
 
 if __name__ == "__main__":
     test = calculation()

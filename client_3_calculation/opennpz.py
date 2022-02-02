@@ -40,5 +40,5 @@ sel = (freq>f_min) & (freq<f_max)
 
 # plt.savefig("dummy_name.png")
 
-plt.plot(output)
+plt.plot(input)
 plt.savefig("bla.png")
